@@ -1,4 +1,6 @@
+import sys
 import time
+import json
 import argparse
 import numpy as np
 
@@ -22,6 +24,14 @@ def main():
     help="Scale factor for atoms distances inside the cluster")
   parser.add_argument("-rho_scaling", type=float, required=True,
     help="Scale factor for atoms distances inside the cluster")
+  parser.add_argument("-ele_name", type=str, required=True,
+    help="Atom Element")
+  parser.add_argument("-atom_weight", type=float, required=True,
+    help="Atomic Weight")
+  parser.add_argument("-pseudo", type=str, required=True,
+    help="Pseudo potential")
+  parser.add_argument("-nNodes", type=int, required=True,
+    help="Number of Nodes to use")
 
   return parser.parse_args()
 
@@ -36,6 +46,7 @@ if __name__ == "__main__":
 
 clusters = {}
 next_generation = {}
+history = {}
 
 popu = pop.population()
 runspresso = rspress.runspresso()
@@ -49,19 +60,19 @@ for gen in range(args.n_generations):
   #
   if gen == 0:
     # Creating the zero generation and writing .in files for espresso
-    clusters = popu.write_espresso_file(args.num_indvs, args.num_atoms, args.r_scale)
+    clusters = popu.write_espresso_file(args.num_indvs, args.num_atoms, args.r_scale, \
+            args.ele_name, args.atom_weight, args.pseudo)
   else:
+    history[f'record{gen-1}'] = [clusters, child_clusters]
     clusters = next_generation
 
   # ============================
   # Step 2. Espresso calculation
-  # Step 2. Espresso calculation  #
-
+    
   # Running espresso 
   ischild = False
-  #for i in range(1, args.num_indvs + 1):
-  #  runspresso.run_job_in_screen(job_id=i, ischild=ischild)
-  #  time.sleep(120)
+  for i in range(1, args.num_indvs + 1):
+    runspresso.run_job_in_screen(job_id=i, ischild=ischild, nNodes=args.nNodes)
 
   # Checking if all jobs finished
   runspresso.check_if_all_finished(args.num_indvs)
@@ -72,12 +83,10 @@ for gen in range(args.n_generations):
 
   # Reading the energies from espresso outputs  
   total_energies = runspresso.get_total_energies(args.num_indvs, ischild=ischild)
-  print("\nEnergies calculated")
-  print(total_energies)
 
   # Adding total energies to clusters
   indv_ids = [f'ind{i}' for i in range(1, args.num_indvs + 1)]
-  for i in range(len(indv_ids)):
+  for i in range(len(indv_ids)):    
     ind_key = f'ind{i+1}'
     clusters[ind_key][f'energ'] = total_energies[i]
 
@@ -93,8 +102,6 @@ for gen in range(args.n_generations):
   # =====================================================
   # Step 3.2. Selection by modified roulette wheel method
   selected_pairs = select.select_unique_pairs_for_mating(clusters, args.num_children)
-  print("\nSelected pairs")
-  print(selected_pairs)
 
   # =======================
   # Step 3.3. Mixing/Mating
@@ -113,9 +120,6 @@ for gen in range(args.n_generations):
   for child_key in child_clusters.keys():
     mutated_child = select.mutate(child_clusters[child_key], args.mutation_rate)
     child_clusters[child_key] = mutated_child
-  
-  print("\nChildren clusters")
-  print(child_clusters['child1'])
 
   # ===========================
   # Step 5. Children evaluation
@@ -123,11 +127,11 @@ for gen in range(args.n_generations):
 
   # Running espresso
   ischild = True
-  popu.write_espresso_file_children(child_clusters, args.num_children, args.num_atoms)
-
-  #for i in range(1, args.num_children + 1):
-  #  runspresso.run_job_in_screen(job_id=i, ischild=ischild)
-  #  time.sleep(120)
+  popu.write_espresso_file_children(child_clusters, args.num_children, \
+          args.num_atoms, args.ele_name, args.atom_weight, args.pseudo)
+ 
+  for i in range(1, args.num_children + 1):
+    runspresso.run_job_in_screen(job_id=i, ischild=ischild, nNodes=args.nNodes)
 
   # Checking if all jobs finished
   runspresso.check_if_all_finished(args.num_children)
@@ -135,8 +139,6 @@ for gen in range(args.n_generations):
   # Fetching total energies for children
   child_total_energies = runspresso.get_total_energies(args.num_children, \
     ischild=ischild)
-  print("\nEnergies calculated")
-  print(child_total_energies, "\n")
 
   # Adding total energies to children clusters
   indv_ids = [f'child{i}' for i in range(1, args.num_children + 1)]
@@ -159,6 +161,11 @@ for gen in range(args.n_generations):
     # Copy the value dictionary and remove 'fitness' if it exists
     next_generation[new_key] = {k: v for k, v in value.items() if k != 'fitness'}
 
+  if gen == args.n_generations - 1:
+    history[f'record{gen}'] = [clusters, child_clusters]
+
+    with open('history.json', 'w') as json_file:
+      json.dump(history, json_file, indent=4)
 
 print("\n\n") 
 print("Writing final candidates into .in espresso's file")

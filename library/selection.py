@@ -11,10 +11,11 @@ class selection:
   def calculate_fitness(self, V_i=1.0, V_min=1.0, V_max=1.0, rho=1.0):
     # Ensure V_max is not equal to V_min to avoid division by zero
     if V_max == V_min:
-      raise ValueError("V_max should not be equal to V_min to avoid division by zero.")
-    
-    # Calculate the fitness
-    fitness = math.exp(-rho * (V_i - V_min) / (V_max - V_min))
+      fitness = 0
+      #raise ValueError("V_max should not be equal to V_min to avoid division by zero.")
+    else:
+      # Calculate the fitness
+      fitness = math.exp(-rho * (V_i - V_min) / (V_max - V_min))
 
     return fitness
 

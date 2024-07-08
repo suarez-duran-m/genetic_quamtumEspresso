@@ -8,20 +8,22 @@ class runspresso:
   def __init__(self):
     self.a = 0
 
-  def create_script(self, job_id='nan', ischild='False'):
+  def create_script(self, job_id='nan', ischild='False', nNodes=1):
     if ischild:
       script = f"""#!/bin/bash
-      pw.x -in child{job_id}.in > child_{job_id}.out
+      mpirun -np NNN pw.x -in child{job_id}.in > child_{job_id}.out
       """
     else:
       script = f"""#!/bin/bash
-      pw.x -in ind{job_id}.in > {job_id}.out
+      mpirun -np NNN pw.x -in ind{job_id}.in > {job_id}.out
       """
+
+    script = script.replace('NNN', f'{nNodes}')
     return script
     
   # Function to run a command in a detached screen session
-  def run_job_in_screen(self, job_id=1, ischild='False'):   
-    script = self.create_script(job_id, ischild)
+  def run_job_in_screen(self, job_id=1, ischild='False', nNodes=1):
+    script = self.create_script(job_id, ischild, nNodes)
     if ischild:
       script_file = f"run_child_{job_id}.sh"
     else:
@@ -78,5 +80,7 @@ class runspresso:
         ener = self.fetch_total_energy(f'{ind_id}.out')
       if ener is not None:
         total_energies.append(ener)
+      else:
+        total_energies.append(-1)
 
     return np.array(total_energies)
