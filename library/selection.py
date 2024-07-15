@@ -48,18 +48,13 @@ class selection:
   # Function to rotate individual coordinates
   def rotate_individual(self, individual, Rx, Ry):
     # Extract coordinates into a NumPy array
-    coords = np.array([individual[key] for key in individual if key.startswith('atom_coord')])
+    coords = np.array(individual)
 
     # Rotate the coordinates: apply Rx first, then Ry
     rotated_coords = np.dot(Rx, coords.T).T  # Transpose to align dimensions, then transpose back
     rotated_coords = np.dot(Ry, rotated_coords.T).T
 
-    # Update the dictionary with the rotated coordinates
-    rotated_individual = individual.copy()
-    for i, key in enumerate([key for key in individual if key.startswith('atom_coord')]):
-        rotated_individual[key] = rotated_coords[i].tolist()
-
-    return rotated_individual
+    return rotated_coords
 
 
 # Define a function to rotate a cluster about two perpendicular axes
@@ -78,40 +73,39 @@ class selection:
                    [-np.sin(angle_y), 0, np.cos(angle_y)]])
     
     # Rotate each individual in the cluster
-    rotated_cluster = {key: rotate_individual(cluster[key], Rx, Ry) for key in cluster}
-    
+    rotated_cluster = {key: self.rotate_individual(cluster[key], Rx, Ry) for key in cluster if key.startswith('atom_coord')}
+
     return rotated_cluster
 
 
   # Function to extract and sort coordinates by z-coordinate
-  def extract_and_sort(cluster):
+  def extract_and_sort(self, cluster):
     coords = []
-    for ind in cluster.values():        
-        for key in ind:
-            if key.startswith('atom_coord'):
-                coords.append(ind[key])
-    coords = np.array(coords)    
-    sorted_coords = coords[np.argsort(-coords[:, 2])]    
+    for ind in cluster.values():\
+      coords.append(ind)
+    coords = np.array(coords)
+    sorted_coords = coords[np.argsort(-coords[:, 2])] 
     return sorted_coords
 
 
   # Function to perform the mating process
-  def mate_clusters(parent1, parent2, N, M):
+  def mate_clusters(self, parent1, parent2, N, M):
     # Randomly rotate both parent clusters
     angle_x1, angle_y1 = np.random.rand(2) * 2 * np.pi
     angle_x2, angle_y2 = np.random.rand(2) * 2 * np.pi
     
-    rotated_parent1 = rotate_cluster(parent1, angle_x1, angle_y1)
-    rotated_parent2 = rotate_cluster(parent2, angle_x2, angle_y2)
-    
-    sorted_parent1 = extract_and_sort(rotated_parent1)
-    sorted_parent2 = extract_and_sort(rotated_parent2)
-      
+    rotated_parent1 = self.rotate_cluster(parent1, angle_x1, angle_y1)
+    rotated_parent2 = self.rotate_cluster(parent2, angle_x2, angle_y2)
+
+    sorted_parent1 = self.extract_and_sort(rotated_parent1)
+    sorted_parent2 = self.extract_and_sort(rotated_parent2)
+     
     # Select highest N-M atoms from the first parent
     selected_parent1 = sorted_parent1[:N-M]
     
     # Select lowest M atoms from the second parent
     selected_parent2 = sorted_parent2[-M:]
+
     
     # Combine the selected fragments to form the child cluster
     child_cluster_coords = np.vstack((selected_parent1, selected_parent2))
@@ -127,7 +121,7 @@ class selection:
   # Define the crossover function
   def crossover(self, parent1, parent2, num_atoms):
     child = {}
-    return mate_cluster(parent1, parent2, num_atoms, \
+    return self.mate_clusters(parent1, parent2, num_atoms, \
       np.random.randint(1, num_atoms))
 
     #for atom_num in range(1, num_atoms+1):

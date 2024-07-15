@@ -172,5 +172,4 @@ print("Writing final candidates into .in espresso's file")
 popu.write_final_espresso_file(best_individuals, args.num_indvs, \
     args.num_atoms, args.ele_name, args.atom_weight, args.pseudo)
 
-
 print("\nGood luck pichurria\n")

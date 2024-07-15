@@ -103,7 +103,7 @@ ATOMIC_POSITIONS (angstrom)
 
       # Append random coordinates for each atom
       for atom_num in range(1, num_atoms+1):
-        tmp_coord = last_clusters[ind_key][f'atom_coord{atom_num}']
+        tmp_coord = last_cluster[ind_key][f'atom_coord{atom_num}']
         tmp_coord_str = " ".join(f"{coord:.10f}" for coord in tmp_coord)
         content += f"{atomName} {tmp_coord_str}\n"
 
