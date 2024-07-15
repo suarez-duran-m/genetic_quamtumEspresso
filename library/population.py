@@ -92,16 +92,20 @@ ATOMIC_POSITIONS (angstrom)
       with open(f"{ind_key}.in", "w") as file:
         file.write(content)
 
-  def write_final_espresso_file(self, clusters, num_indvs=1, num_atoms=4):    
+  def write_final_espresso_file(self, last_cluster, num_indvs=1, num_atoms=4, \
+      atomName='nan', atomic_weight=1.0, pseudo_potential='nan'):
+
     for indv in range(1, num_indvs+1):
       ind_key = f'ind{indv}'
-      content = self.create_content()
+      content = self.create_content(elementName=atomName, natom=indv, \
+          totalatoms=num_atoms, atomicweight=atomic_weight, \
+          pseudopotential=pseudo_potential)
 
-      # Append random coordinates for each Cu atom
+      # Append random coordinates for each atom
       for atom_num in range(1, num_atoms+1):
-        tmp_coord = clusters[ind_key][f'atom_coord{atom_num}']
+        tmp_coord = last_clusters[ind_key][f'atom_coord{atom_num}']
         tmp_coord_str = " ".join(f"{coord:.10f}" for coord in tmp_coord)
-        content += f"Cu {tmp_coord_str}\n"
+        content += f"{atomName} {tmp_coord_str}\n"
 
       # Write the content to the output file
       with open(f"final_{ind_key}.in", "w") as file:
