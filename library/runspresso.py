@@ -30,9 +30,10 @@ class runspresso:
       script_file = f"run_ind_{job_id}.sh"
     with open(script_file, "w") as file:
       file.write(script)
-        
+    
     subprocess.run(f"chmod +x {script_file}", shell=True)
-    subprocess.run(f"screen -dmS job_{job_id} ./{script_file}", shell=True)
+    subprocess.run(f"nice -20 nohup ./{script_file}", shell=True)
+    #subprocess.run(f"screen -dmS job_{job_id} ./{script_file}", shell=True)
 
   def check_screen_sessions(self, job_id='nan'):
     result = subprocess.run("screen -ls", shell=True, capture_output=True, text=True)
@@ -66,7 +67,7 @@ class runspresso:
               total_energy = float(match.group(1))
               break
     except FileNotFoundError:
-      print(f"File Not Found.")
+      print(f"File Not Found:", infile)
     except Exception as e:
       print(f"Error While Reading File {file}: {e}")
     return total_energy

@@ -45,7 +45,7 @@ if __name__ == "__main__":
 # Loop over generations
 
 clusters = {}
-next_generation = {}
+best_individuals = {}
 history = {}
 
 popu = pop.population()
@@ -54,6 +54,7 @@ select = selection.selection()
 
 for gen in range(args.n_generations): 
   print("\nRunning generation", gen, "\n")
+  print("\nRunning generation", gen, "\n", file=sys.stderr)
   
   # ===============================
   # Step 1. Creating the population  
@@ -62,33 +63,32 @@ for gen in range(args.n_generations):
     # Creating the zero generation and writing .in files for espresso
     clusters = popu.write_espresso_file(args.num_indvs, args.num_atoms, args.r_scale, \
             args.ele_name, args.atom_weight, args.pseudo)
-  else:
-    history[f'record{gen-1}'] = [clusters, child_clusters]
-    clusters = next_generation
+
 
   # ============================
-  # Step 2. Espresso calculation
-    
-  # Running espresso 
-  ischild = False
-  for i in range(1, args.num_indvs + 1):
-    runspresso.run_job_in_screen(job_id=i, ischild=ischild, nNodes=args.nNodes)
+  # Step 2. Espresso calculation    
+  #
+    ischild = False
+    for i in range(1, args.num_indvs + 1):
+      runspresso.run_job_in_screen(job_id=i, ischild=ischild, nNodes=args.nNodes)
 
-  # Checking if all jobs finished
-  runspresso.check_if_all_finished(args.num_indvs)
+    # Reading the energies from espresso outputs
+    total_energies = runspresso.get_total_energies(args.num_indvs, ischild=ischild)
+    
+    # Adding total energies to clusters
+    indv_ids = [f'ind{i}' for i in range(1, args.num_indvs + 1)]
+    for i in range(len(indv_ids)):
+      ind_key = f'ind{i+1}'
+      clusters[ind_key][f'energ'] = total_energies[i]
+
+  else:
+    # if not generation 0, work with the best of the previous generation 
+    clusters = best_individuals
+
 
   # ===============================
   # Step 3. Calculating the Fitness
   #
-
-  # Reading the energies from espresso outputs  
-  total_energies = runspresso.get_total_energies(args.num_indvs, ischild=ischild)
-
-  # Adding total energies to clusters
-  indv_ids = [f'ind{i}' for i in range(1, args.num_indvs + 1)]
-  for i in range(len(indv_ids)):    
-    ind_key = f'ind{i+1}'
-    clusters[ind_key][f'energ'] = total_energies[i]
 
   # =============================
   # Step 3.1. Fitness Calculation 
@@ -113,13 +113,15 @@ for gen in range(args.n_generations):
     child_key = f'child{j + 1}'
     child = select.crossover(parent1, parent2, args.num_atoms)
     child_clusters[child_key] = child
-    
+
+
   # ================
   # Step 4. Mutation
   #
   for child_key in child_clusters.keys():
     mutated_child = select.mutate(child_clusters[child_key], args.mutation_rate)
     child_clusters[child_key] = mutated_child
+
 
   # ===========================
   # Step 5. Children evaluation
@@ -133,9 +135,6 @@ for gen in range(args.n_generations):
   for i in range(1, args.num_children + 1):
     runspresso.run_job_in_screen(job_id=i, ischild=ischild, nNodes=args.nNodes)
 
-  # Checking if all jobs finished
-  runspresso.check_if_all_finished(args.num_children)
-
   # Fetching total energies for children
   child_total_energies = runspresso.get_total_energies(args.num_children, \
     ischild=ischild)
@@ -146,30 +145,30 @@ for gen in range(args.n_generations):
     ind_key = f'child{i+1}'
     child_clusters[ind_key][f'energ'] = child_total_energies[i]
 
+
   # ===============
   # Step 6. Elitism
   #
   combined_list = [(key, value) for key, value in clusters.items()] \
     + [(key, value) for key, value in child_clusters.items()]
   combined_list_sorted = sorted(combined_list, key=lambda x: x[1]['energ'])
-  top_5_elements = combined_list_sorted[:5]
+  top_best_individuals = combined_list_sorted[:args.num_indvs]
 
-  # Create the next_generation dictionary
-  next_generation = {}
-  for i, (key, value) in enumerate(top_5_elements):
+  # Create/reset the best_individuals dictionary
+  best_individuals = {}
+  for i, (key, value) in enumerate(top_best_individuals):
     new_key = f'ind{i + 1}'
     # Copy the value dictionary and remove 'fitness' if it exists
-    next_generation[new_key] = {k: v for k, v in value.items() if k != 'fitness'}
-
-  if gen == args.n_generations - 1:
-    history[f'record{gen}'] = [clusters, child_clusters]
-
-    with open('history.json', 'w') as json_file:
-      json.dump(history, json_file, indent=4)
+    best_individuals[new_key] = {k: v for k, v in value.items() if k != 'fitness'}
+  
+  # Writing the history
+  history[f'record{gen}'] = [clusters, child_clusters]
+  with open('history.json', 'w') as json_file:
+    json.dump(history, json_file, indent=4)
 
 print("\n\n") 
 print("Writing final candidates into .in espresso's file")
 
-popu.write_final_espresso_file(next_generation, args.num_indvs, args.num_atoms)
+popu.write_final_espresso_file(best_individuals, args.num_indvs, args.num_atoms)
 
 print("\nGood luck pichurria\n")

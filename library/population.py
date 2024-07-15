@@ -9,7 +9,7 @@ class population:
           pseudopotential='nan'):
     content = """&control
 calculation = 'scf',
-prefix='ELENAME-nATOM',!prefijo, debe cambiar segun el numero
+prefix='ELENAME-totATOM-nATOM',!prefijo, debe cambiar segun el numero
 outdir='/tmp/',
 pseudo_dir = './'
 /
@@ -17,18 +17,15 @@ pseudo_dir = './'
 ibrav= 0,
 nat= totATOM,!!numero de atomos
 ntyp= 1,
-ecutwfc = 40.0,
+ecutwfc = 60.0,
 occupations='smearing',
 smearing='marzari-vanderbilt',
 degauss=0.04
 /
 &ELECTRONS
-conv_thr = 1.0d-3
-electron_maxstep = 10,
+conv_thr = 1.0d-6
+electron_maxstep = 100,
 diagonalization  = 'david'
-/
-&IONS
-ion_dynamics  = 'bfgs'
 /
 K_POINTS {gamma}
 ATOMIC_SPECIES
@@ -42,7 +39,7 @@ ATOMIC_POSITIONS (angstrom)
     
     content = content.replace('ELENAME', f'{elementName}')
     content = content.replace('-nATOM', f'-{natom}')
-    content = content.replace('totATOM,', f'{totalatoms},')
+    content = content.replace('totATOM', f'{totalatoms}')
     content = content.replace('ATOWEIGHT', f'{atomicweight}')
     content = content.replace('PSEUDOPOT', f'{pseudopotential}')
 
@@ -85,7 +82,7 @@ ATOMIC_POSITIONS (angstrom)
               totalatoms=num_atoms, atomicweight=atomic_weight, \
               pseudopotential=pseudo_potential)
 
-      # Append random coordinates for each Cu atom
+      # Append random coordinates for each atom
       for atom_num in range(1, num_atoms+1):
         tmp_coord = child_clusters[ind_key][f'atom_coord{atom_num}']
         tmp_coord_str = " ".join(f"{coord:.10f}" for coord in tmp_coord)

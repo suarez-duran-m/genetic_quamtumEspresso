@@ -44,22 +44,104 @@ class selection:
 
     return selected_pairs
 
+
+  # Function to rotate individual coordinates
+  def rotate_individual(self, individual, Rx, Ry):
+    # Extract coordinates into a NumPy array
+    coords = np.array([individual[key] for key in individual if key.startswith('atom_coord')])
+
+    # Rotate the coordinates: apply Rx first, then Ry
+    rotated_coords = np.dot(Rx, coords.T).T  # Transpose to align dimensions, then transpose back
+    rotated_coords = np.dot(Ry, rotated_coords.T).T
+
+    # Update the dictionary with the rotated coordinates
+    rotated_individual = individual.copy()
+    for i, key in enumerate([key for key in individual if key.startswith('atom_coord')]):
+        rotated_individual[key] = rotated_coords[i].tolist()
+
+    return rotated_individual
+
+
+# Define a function to rotate a cluster about two perpendicular axes
+  def rotate_cluster(self, cluster, angle_x, angle_y):
+    # Convert angles from degrees to radians
+    angle_x = np.radians(angle_x)
+    angle_y = np.radians(angle_y)
+    
+    # Create rotation matrices
+    Rx = np.array([[1, 0, 0],
+                   [0, np.cos(angle_x), -np.sin(angle_x)],
+                   [0, np.sin(angle_x), np.cos(angle_x)]])
+    
+    Ry = np.array([[np.cos(angle_y), 0, np.sin(angle_y)],
+                   [0, 1, 0],
+                   [-np.sin(angle_y), 0, np.cos(angle_y)]])
+    
+    # Rotate each individual in the cluster
+    rotated_cluster = {key: rotate_individual(cluster[key], Rx, Ry) for key in cluster}
+    
+    return rotated_cluster
+
+
+  # Function to extract and sort coordinates by z-coordinate
+  def extract_and_sort(cluster):
+    coords = []
+    for ind in cluster.values():        
+        for key in ind:
+            if key.startswith('atom_coord'):
+                coords.append(ind[key])
+    coords = np.array(coords)    
+    sorted_coords = coords[np.argsort(-coords[:, 2])]    
+    return sorted_coords
+
+
+  # Function to perform the mating process
+  def mate_clusters(parent1, parent2, N, M):
+    # Randomly rotate both parent clusters
+    angle_x1, angle_y1 = np.random.rand(2) * 2 * np.pi
+    angle_x2, angle_y2 = np.random.rand(2) * 2 * np.pi
+    
+    rotated_parent1 = rotate_cluster(parent1, angle_x1, angle_y1)
+    rotated_parent2 = rotate_cluster(parent2, angle_x2, angle_y2)
+    
+    sorted_parent1 = extract_and_sort(rotated_parent1)
+    sorted_parent2 = extract_and_sort(rotated_parent2)
+      
+    # Select highest N-M atoms from the first parent
+    selected_parent1 = sorted_parent1[:N-M]
+    
+    # Select lowest M atoms from the second parent
+    selected_parent2 = sorted_parent2[-M:]
+    
+    # Combine the selected fragments to form the child cluster
+    child_cluster_coords = np.vstack((selected_parent1, selected_parent2))
+    
+    # Convert back to dictionary format similar to parent clusters
+    child_cluster = {}
+    for i, coord in enumerate(child_cluster_coords):        
+        child_cluster[f'atom_coord{i+1}'] = coord.tolist()
+    
+    return child_cluster
+
+
   # Define the crossover function
   def crossover(self, parent1, parent2, num_atoms):
     child = {}
-    for atom_num in range(1, num_atoms+1):
-      atom_key = f'atom_coord{atom_num}'
-      crossover_point = np.random.randint(1, 3)
-      child[atom_key] = parent1[atom_key][:crossover_point] \
-        + parent2[atom_key][crossover_point:]
-    return child
+    return mate_cluster(parent1, parent2, num_atoms, \
+      np.random.randint(1, num_atoms))
+
+    #for atom_num in range(1, num_atoms+1):
+    #  atom_key = f'atom_coord{atom_num}'
+    #  crossover_point = np.random.randint(1, 3)
+    #  child[atom_key] = parent1[atom_key][:crossover_point] \
+    #    + parent2[atom_key][crossover_point:]
+    #return child
 
 
+  # Mutation
   def mutate(self, individual, mutation_rate):
     for atom_key in individual.keys():
       if np.random.rand() < mutation_rate:
         individual[atom_key] = [coord + np.random.normal(0, 0.1) \
           for coord in individual[atom_key]]
-    return individual
-
-    
+    return individual 
