@@ -10,6 +10,8 @@ import library.runspresso as rspress
 
 def main():
   parser = argparse.ArgumentParser(description="Run the Genetic Algorithm.")
+  parser.add_argument("-prefix", type=str, required=True,
+    help="Prefix name to identify the Espresso's data card")
   parser.add_argument("-num_indvs", type=int, required=True,
     help="Number of individuals for the cluster")
   parser.add_argument("-num_atoms", type=int, required=True, 
@@ -28,6 +30,8 @@ def main():
     help="Atom Element")
   parser.add_argument("-atom_weight", type=float, required=True,
     help="Atomic Weight")
+  parser.add_argument("-pseudoDir", type=str, required=True,
+    help="Path where pseudo potential is located")
   parser.add_argument("-pseudo", type=str, required=True,
     help="Pseudo potential")
   parser.add_argument("-nNodes", type=int, required=True,
@@ -61,16 +65,17 @@ for gen in range(args.n_generations):
   #
   if gen == 0:
     # Creating the zero generation and writing .in files for espresso
-    clusters = popu.write_espresso_file(args.num_indvs, args.num_atoms, args.r_scale, \
-            args.ele_name, args.atom_weight, args.pseudo)
+    clusters = popu.write_espresso_file(args.prefix, args.num_indvs, \
+            args.num_atoms, args.r_scale, args.ele_name, \
+            args.atom_weight, args.pseudoDir, args.pseudo)
 
 
   # ============================
   # Step 2. Espresso calculation    
   #
     ischild = False
-    for i in range(1, args.num_indvs + 1):
-      runspresso.run_job_in_screen(job_id=i, ischild=ischild, nNodes=args.nNodes)
+    #for i in range(1, args.num_indvs + 1):
+    #  runspresso.run_job_in_screen(job_id=i, ischild=ischild, nNodes=args.nNodes)
 
     # Reading the energies from espresso outputs
     total_energies = runspresso.get_total_energies(args.num_indvs, ischild=ischild)
@@ -129,11 +134,12 @@ for gen in range(args.n_generations):
 
   # Running espresso
   ischild = True
-  popu.write_espresso_file_children(child_clusters, args.num_children, \
-          args.num_atoms, args.ele_name, args.atom_weight, args.pseudo)
+  popu.write_espresso_file_children(args.prefix, child_clusters, \
+          args.num_children, args.num_atoms, args.ele_name, \
+          args.atom_weight, args.pseudoDir, args.pseudo)
  
-  for i in range(1, args.num_children + 1):
-    runspresso.run_job_in_screen(job_id=i, ischild=ischild, nNodes=args.nNodes)
+  #for i in range(1, args.num_children + 1):
+  #  runspresso.run_job_in_screen(job_id=i, ischild=ischild, nNodes=args.nNodes)
 
   # Fetching total energies for children
   child_total_energies = runspresso.get_total_energies(args.num_children, \
@@ -169,7 +175,8 @@ for gen in range(args.n_generations):
 print("\n\n") 
 print("Writing final candidates into .in espresso's file")
 
-popu.write_final_espresso_file(best_individuals, args.num_indvs, \
-    args.num_atoms, args.ele_name, args.atom_weight, args.pseudo)
+popu.write_final_espresso_file(args.prefix, best_individuals, \
+        args.num_indvs, args.num_atoms, args.ele_name, \
+        args.atom_weight, args.pseudoDir, args.pseudo)
 
 print("\nGood luck pichurria\n")
