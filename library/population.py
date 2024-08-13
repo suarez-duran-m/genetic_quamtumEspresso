@@ -5,13 +5,14 @@ class population:
   def __init__(self):
     self.a = 0
 
-  def create_content(self, elementName='nan', natom=1, totalatoms=1, atomicweight=1, \
+  def create_content(self, prefix='nan', elementName='nan', natom=1, \
+          totalatoms=1, atomicweight=1,  pseudodir='nan', \
           pseudopotential='nan'):
     content = """&control
 calculation = 'scf',
-prefix='ELENAME-totATOM-nATOM',!prefijo, debe cambiar segun el numero
+prefix='PREFIXNAME', !prefijo, debe cambiar segun el numero
 outdir='/tmp/',
-pseudo_dir = './'
+pseudo_dir = 'PATHPSEUDO'
 /
 &system
 ibrav= 0,
@@ -37,10 +38,12 @@ CELL_PARAMETERS (angstrom)
 ATOMIC_POSITIONS (angstrom)
   """
     
+    content = content.replace('PREFIXNAME', f'{prefix}')
     content = content.replace('ELENAME', f'{elementName}')
     content = content.replace('-nATOM', f'-{natom}')
     content = content.replace('totATOM', f'{totalatoms}')
     content = content.replace('ATOWEIGHT', f'{atomicweight}')
+    content = content.replace('PATHPSEUDO', f'{pseudodir}')
     content = content.replace('PSEUDOPOT', f'{pseudopotential}')
 
     return content
@@ -50,15 +53,16 @@ ATOMIC_POSITIONS (angstrom)
     return f"{random.uniform(0, N_cubed_root) * scale_factor:.10f} {random.uniform(0, N_cubed_root) * scale_factor:.10f} {random.uniform(0, N_cubed_root) * scale_factor:.10f}"
 
 
-  def write_espresso_file(self, num_indvs=1, num_atoms=4, r_scale=1.0, \
-          atomName='nan', atomic_weight=1.0, pseudo_potential='nan'):
+  def write_espresso_file(self, prefix='nan', num_indvs=1, num_atoms=4, \
+          r_scale=1.0, atomName='nan', atomic_weight=1.0, \
+          pseudoDir='nan', pseudo_potential='nan'):
     clusters = {}
     for indv in range(1, num_indvs+1):
       ind_key = f'ind{indv}'
       clusters[ind_key] = {}
-      content = self.create_content(elementName=atomName, natom=indv, \
-              totalatoms=num_atoms, atomicweight=atomic_weight, \
-              pseudopotential=pseudo_potential)
+      content = self.create_content(prefix, elementName=atomName, \
+              natom=indv, totalatoms=num_atoms, atomicweight=atomic_weight, \
+              pseudodir=pseudoDir, pseudopotential=pseudo_potential)
 
       # Append random coordinates for each Cu atom
       for atom_num in range(1, num_atoms+1):
@@ -74,12 +78,14 @@ ATOMIC_POSITIONS (angstrom)
         file.write(content)
     return clusters
 
-  def write_espresso_file_children(self, child_clusters, num_indvs=1, num_atoms=4, \
-          atomName='nan', atomic_weight=1.0, pseudo_potential='nan'):  
+  def write_espresso_file_children(self, prefix='nan', child_clusters={}, \
+          num_indvs=1, num_atoms=4, atomName='nan', atomic_weight=1.0, \
+          pseudoDir='nan', pseudo_potential='nan'):
     for indv in range(1, num_indvs+1):
       ind_key = f'child{indv}'
-      content = self.create_content(elementName=atomName, natom=indv, \
-              totalatoms=num_atoms, atomicweight=atomic_weight, \
+      content = self.create_content(prefix, elementName=atomName, \
+              natom=indv, totalatoms=num_atoms, \
+              atomicweight=atomic_weight, pseudodir=pseudoDir, \
               pseudopotential=pseudo_potential)
 
       # Append random coordinates for each atom
@@ -92,14 +98,16 @@ ATOMIC_POSITIONS (angstrom)
       with open(f"{ind_key}.in", "w") as file:
         file.write(content)
 
-  def write_final_espresso_file(self, last_cluster, num_indvs=1, num_atoms=4, \
-      atomName='nan', atomic_weight=1.0, pseudo_potential='nan'):
+  def write_final_espresso_file(self, prefix='nan', last_cluster={} \
+          , num_indvs=1, num_atoms=4, atomName='nan', atomic_weight=1.0, \
+          pseudoDir='nan', pseudo_potential='nan'):
 
     for indv in range(1, num_indvs+1):
       ind_key = f'ind{indv}'
-      content = self.create_content(elementName=atomName, natom=indv, \
-          totalatoms=num_atoms, atomicweight=atomic_weight, \
-          pseudopotential=pseudo_potential)
+      content = self.create_content(prefix, elementName=atomName, \
+              natom=indv, totalatoms=num_atoms, \
+              atomicweight=atomic_weight, pseudodir=pseudoDir, \
+              pseudopotential=pseudo_potential)
 
       # Append random coordinates for each atom
       for atom_num in range(1, num_atoms+1):

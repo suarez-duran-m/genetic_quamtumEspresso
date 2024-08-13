@@ -1,16 +1,16 @@
 #!/bin/bash
 
-elementName=Cu
-atomicWeight=63.546
-pseudoDir='../'
-pseudoPotential='Cu.pbe-dn-rrkjus_psl.1.0.0.UPF'
-prefixName='Cu-10-A'
+elementName=Al
+atomicWeight=26.981
+pseudoDir='../../'
+pseudoPotential='Al.pbe-n-rrkjus_psl.1.0.0.UPF'
+prefixName='Al-35-02'
 
-numIndvs=10
-numAtoms=5
-numChildren=8
-mutationRate=0.1
-nGenerations=20
+numIndvs=5
+numAtoms=35
+numChildren=4
+mutationRate=0.2
+nGenerations=60
 rScale=1.5
 rhoScaling=3
 numNodes=20

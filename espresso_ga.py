@@ -74,8 +74,8 @@ for gen in range(args.n_generations):
   # Step 2. Espresso calculation    
   #
     ischild = False
-    #for i in range(1, args.num_indvs + 1):
-    #  runspresso.run_job_in_screen(job_id=i, ischild=ischild, nNodes=args.nNodes)
+    for i in range(1, args.num_indvs + 1):
+      runspresso.run_job_in_screen(job_id=i, ischild=ischild, nNodes=args.nNodes)
 
     # Reading the energies from espresso outputs
     total_energies = runspresso.get_total_energies(args.num_indvs, ischild=ischild)
@@ -138,8 +138,8 @@ for gen in range(args.n_generations):
           args.num_children, args.num_atoms, args.ele_name, \
           args.atom_weight, args.pseudoDir, args.pseudo)
  
-  #for i in range(1, args.num_children + 1):
-  #  runspresso.run_job_in_screen(job_id=i, ischild=ischild, nNodes=args.nNodes)
+  for i in range(1, args.num_children + 1):
+    runspresso.run_job_in_screen(job_id=i, ischild=ischild, nNodes=args.nNodes)
 
   # Fetching total energies for children
   child_total_energies = runspresso.get_total_energies(args.num_children, \
