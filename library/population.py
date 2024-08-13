@@ -1,9 +1,6 @@
 import random
 import json
 
-from exceptiongroup import print_exception
-
-
 class population:
 
   def __init__(self):
