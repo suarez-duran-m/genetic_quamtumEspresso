@@ -12,6 +12,8 @@ def main():
   parser = argparse.ArgumentParser(description="Run the Genetic Algorithm.")
   parser.add_argument("-prefix", type=str, required=True,
     help="Prefix name to identify the Espresso's data card")
+  parser.add_argument("-getZeroPopu", type=str, required=False,
+    help="Argument with filename from zero population will be create")
   parser.add_argument("-num_indvs", type=int, required=True,
     help="Number of individuals for the cluster")
   parser.add_argument("-num_atoms", type=int, required=True, 
@@ -64,11 +66,15 @@ for gen in range(args.n_generations):
   # Step 1. Creating the population  
   #
   if gen == 0:
-    # Creating the zero generation and writing .in files for espresso
-    clusters = popu.write_espresso_file(args.prefix, args.num_indvs, \
-            args.num_atoms, args.r_scale, args.ele_name, \
-            args.atom_weight, args.pseudoDir, args.pseudo)
-
+    if args.getZeroPopu is None:
+      # Creating the zero generation and writing .in files for espresso
+      clusters = popu.write_espresso_file(args.prefix, args.num_indvs, \
+              args.num_atoms, args.r_scale, args.ele_name, \
+              args.atom_weight, args.pseudoDir, args.pseudo)
+    elif args.getZeroPopu is not None:
+      cluster = popu.write_espresso_file_notRandom(args.prefix, args.num_indvs, \
+              args.num_atoms, args.ele_name, args.atom_weight, \
+              args.pseudoDir, args.pseudo, args.getZeroPopu)
 
   # ============================
   # Step 2. Espresso calculation    
@@ -89,7 +95,6 @@ for gen in range(args.n_generations):
   else:
     # if not generation 0, work with the best of the previous generation 
     clusters = best_individuals
-
 
   # ===============================
   # Step 3. Calculating the Fitness

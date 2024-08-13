@@ -1,4 +1,8 @@
 import random
+import json
+
+from exceptiongroup import print_exception
+
 
 class population:
 
@@ -52,7 +56,8 @@ ATOMIC_POSITIONS (angstrom)
     N_cubed_root = num_atoms ** (1/3)
     return f"{random.uniform(0, N_cubed_root) * scale_factor:.10f} {random.uniform(0, N_cubed_root) * scale_factor:.10f} {random.uniform(0, N_cubed_root) * scale_factor:.10f}"
 
-
+  # parser.add_argument("-getZeroPopu", type=str, required=False,
+  #  help="Argument with filename from zero population will be create")
   def write_espresso_file(self, prefix='nan', num_indvs=1, num_atoms=4, \
           r_scale=1.0, atomName='nan', atomic_weight=1.0, \
           pseudoDir='nan', pseudo_potential='nan'):
@@ -64,7 +69,7 @@ ATOMIC_POSITIONS (angstrom)
               natom=indv, totalatoms=num_atoms, atomicweight=atomic_weight, \
               pseudodir=pseudoDir, pseudopotential=pseudo_potential)
 
-      # Append random coordinates for each Cu atom
+      # Append random coordinates for each atom
       for atom_num in range(1, num_atoms+1):
         tmp_coord = self.generate_random_coordinates(r_scale, num_atoms)
         string_components = tmp_coord.split()
@@ -76,6 +81,32 @@ ATOMIC_POSITIONS (angstrom)
       # Write the content to the output file
       with open(f"{ind_key}.in", "w") as file:
         file.write(content)
+    return clusters
+
+  def write_espresso_file_notRandom(self, prefix='nan', num_indvs=1, num_atoms=4, \
+          atomName='nan', atomic_weight=1.0, pseudoDir='nan', \
+          pseudo_potential='nan', zeropopufile='nan'):
+    clusters = {}
+    with open(zeropopufile) as file:
+      data = json.load(file)
+    last_record_key = sorted(data.keys(), key=lambda x: int(x.replace('record', '')))[-1]
+    last_record_value = data[last_record_key]
+
+    for indv in range(1, num_indvs+1):
+      ind_key = f'ind{indv}'
+      clusters[ind_key] = {}
+      content = self.create_content(prefix, elementName=atomName, \
+              natom=indv, totalatoms=num_atoms, atomicweight=atomic_weight, \
+              pseudodir=pseudoDir, pseudopotential=pseudo_potential)
+
+      for atom_num in range(1, num_atoms + 1):
+        tmp_coord = last_record_value[0][ind_key][f'atom_coord{atom_num}']
+        clusters[ind_key][f'atom_coord{atom_num}'] = [float(component) for component in tmp_coord]
+        content += f"{atomName} {' '.join(map(str, tmp_coord))}\n"
+      # Write the content to the output file
+      with open(f"{ind_key}.in", "w") as file:
+        file.write(content)
+
     return clusters
 
   def write_espresso_file_children(self, prefix='nan', child_clusters={}, \
