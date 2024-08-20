@@ -72,7 +72,7 @@ for gen in range(args.n_generations):
               args.num_atoms, args.r_scale, args.ele_name, \
               args.atom_weight, args.pseudoDir, args.pseudo)
     elif args.getZeroPopu is not None:
-      cluster = popu.write_espresso_file_notRandom(args.prefix, args.num_indvs, \
+      clusters = popu.write_espresso_file_notRandom(args.prefix, args.num_indvs, \
               args.num_atoms, args.ele_name, args.atom_weight, \
               args.pseudoDir, args.pseudo, args.getZeroPopu)
 
