@@ -57,6 +57,7 @@ history = {}
 popu = pop.population()
 runspresso = rspress.runspresso()
 select = selection.selection()
+total_energies = []
 
 for gen in range(args.n_generations): 
   print("\nRunning generation", gen, "\n")
@@ -101,7 +102,8 @@ for gen in range(args.n_generations):
   #
 
   # =============================
-  # Step 3.1. Fitness Calculation 
+  # Step 3.1. Fitness Calculation
+
   V_min = np.min(total_energies)
   V_max = np.max(total_energies)
   for i in range(args.num_indvs):
@@ -171,6 +173,7 @@ for gen in range(args.n_generations):
     new_key = f'ind{i + 1}'
     # Copy the value dictionary and remove 'fitness' if it exists
     best_individuals[new_key] = {k: v for k, v in value.items() if k != 'fitness'}
+    total_energies[i] = value['energ']
   
   # Writing the history
   history[f'record{gen}'] = [clusters, child_clusters]
