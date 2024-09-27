@@ -8,6 +8,9 @@ import library.selection as selection
 import library.population as pop
 import library.runspresso as rspress
 
+
+start_time = time.time()
+
 def main():
   parser = argparse.ArgumentParser(description="Run the Genetic Algorithm.")
   parser.add_argument("-prefix", type=str, required=True,
@@ -187,4 +190,8 @@ popu.write_final_espresso_file(args.prefix, best_individuals, \
         args.num_indvs, args.num_atoms, args.ele_name, \
         args.atom_weight, args.pseudoDir, args.pseudo)
 
+end_time = time.time()
+
+with open("execution_time.txt", "w") as file:
+  file.write(f"Executaion time: {end_time - start_time}")
 print("\nGood luck pichurria\n")
