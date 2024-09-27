@@ -41,6 +41,8 @@ def main():
     help="Pseudo potential")
   parser.add_argument("-nNodes", type=int, required=True,
     help="Number of Nodes to use")
+  parser.add_argument("-ifMagnetic", type=int, required=True,
+    help="To run DFF with magnetic properties (spin)")
 
   return parser.parse_args()
 
@@ -74,7 +76,7 @@ for gen in range(args.n_generations):
       # Creating the zero generation and writing .in files for espresso
       clusters = popu.write_espresso_file(args.prefix, args.num_indvs, \
               args.num_atoms, args.r_scale, args.ele_name, \
-              args.atom_weight, args.pseudoDir, args.pseudo)
+              args.atom_weight, args.ifMagnetic, args.pseudoDir, args.pseudo)
     elif args.getZeroPopu is not None:
       clusters = popu.write_espresso_file_notRandom(args.prefix, args.num_indvs, \
               args.num_atoms, args.ele_name, args.atom_weight, \
