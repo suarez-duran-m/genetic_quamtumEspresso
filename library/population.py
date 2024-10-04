@@ -1,5 +1,6 @@
 import random
 import json
+import math
 
 class population:
 
@@ -96,9 +97,45 @@ ATOMIC_POSITIONS (angstrom)
     return content
 
 
-  def generate_random_coordinates(self, scale_factor=1.0, num_atoms=4):
-    N_cubed_root = num_atoms ** (1/3)
-    return f"{random.uniform(0, N_cubed_root) * scale_factor:.10f} {random.uniform(0, N_cubed_root) * scale_factor:.10f} {random.uniform(0, N_cubed_root) * scale_factor:.10f}"
+  def generate_random_coordinates(self, scale_factor=1.0, num_atoms=4, min_distance=0.):
+    def distance(coord1, coord2):
+      """Calculate the Euclidean distance between two 3D coordinates."""
+      return math.sqrt(
+        (coord1[0] - coord2[0]) ** 2 +
+        (coord1[1] - coord2[1]) ** 2 +
+        (coord1[2] - coord2[2]) ** 2
+      )
+
+    N_cubed_root = num_atoms ** (1 / 3)  # Calculate cube root of the number of atoms
+    coordinates = []  # Store generated coordinates here
+
+    for _ in range(num_atoms):
+      while True:
+        # Generate random coordinates for the new atom
+        x = random.uniform(0, N_cubed_root) * scale_factor
+        y = random.uniform(0, N_cubed_root) * scale_factor
+        z = random.uniform(0, N_cubed_root) * scale_factor
+        new_atom = (x, y, z)
+
+        # If this is the first atom, no need to check distances
+        if not coordinates:
+          coordinates.append(new_atom)
+          break
+
+        # Check the distance from the new atom to all previously placed atoms
+        too_close = False
+        for atom in coordinates:
+          if distance(new_atom, atom) < min_distance:
+            too_close = True
+            break
+
+        # If no atoms are too close, accept this atom's position
+        if not too_close:
+          coordinates.append(new_atom)
+          break  # Exit the while loop and proceed with the next atom
+
+    # Return the coordinates formatted as strings
+    return coordinates
 
   def write_espresso_file(self, prefix='nan', num_indvs=1, num_atoms=4, \
           r_scale=1.0, atomName='nan', atomic_weight=1.0, ismagnetic=0, \
@@ -118,8 +155,9 @@ ATOMIC_POSITIONS (angstrom)
           pseudodir=pseudoDir, pseudopotential=pseudo_potential)
 
       # Append random coordinates for each atom
+      coordinates = self.generate_random_coordinates(r_scale, num_atoms, min_distance=2.0)
       for atom_num in range(1, num_atoms+1):
-        tmp_coord = self.generate_random_coordinates(r_scale, num_atoms)
+        tmp_coord = f"{coordinates[atom_num-1][0]:.10f} {coordinates[atom_num-1][1]:.10f} {coordinates[atom_num-1][2]:.10f}"
         string_components = tmp_coord.split()
         # Convert each component to a float
         clusters[ind_key][f'atom_coord{atom_num}'] = \
