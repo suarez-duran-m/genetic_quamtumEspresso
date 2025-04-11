@@ -28,13 +28,14 @@ class selection:
     while len(selected_pairs) < num_pairs_needed:
       # Pick a pair at random
       pair = random.choice(all_pairs)
-      
       # Check if both individuals in the pair have sufficient fitness
       F_i = [clusters[key]['fitness'] for key in pair]
-
+      if F_i[0] == 0 and F_i[1] == 0:
+        selected_pairs.append(pair)
+        break
       # Generate random numbers between 0 and 1 for both individuals
       R = [random.random() for _ in pair]
-    
+
       # Accept the pair for mating if both F_i > R
       if all(F > r for F, r in zip(F_i, R)):
         if pair not in selected_pairs:

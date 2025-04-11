@@ -1,0 +1,18 @@
+{
+  "singleSpice": {
+    "prefix": "Cu-4-02",
+    "num_indvs": 5,
+    "num_atoms": 4,
+    "num_children": 4,
+    "mutation_rate": 0.2,
+    "n_generations": 2,
+    "r_scale": 1.5,
+    "rho_scaling": 3,
+    "ele_name": "Cu",
+    "atom_weight": 26.981,
+    "pseudoDir": "../",
+    "pseudo": "Cu.pbe-dn-rrkjus_psl.1.0.0.UPF",
+    "nNodes": 1,
+    "ifMagnetic": 0
+  }
+}

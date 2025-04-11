@@ -7,8 +7,8 @@ class population:
   def __init__(self):
     self.a = 0
 
-  def create_content(self, prefix='nan', elementName='nan', natom=1, \
-    totalatoms=1, atomicweight=1,  pseudodir='nan', pseudopotential='nan'):
+  def create_content(self, prefix='nan', elementName='nan', totalatoms=1, \
+                     atomicweight=1,  pseudodir='nan', pseudopotential='nan'):
     content = """&control
 calculation = 'scf',
 prefix='PREFIXNAME', !prefijo, debe cambiar segun el numero
@@ -41,7 +41,6 @@ ATOMIC_POSITIONS (angstrom)
     
     content = content.replace('PREFIXNAME', f'{prefix}')
     content = content.replace('ELENAME', f'{elementName}')
-    content = content.replace('-nATOM', f'-{natom}')
     content = content.replace('totATOM', f'{totalatoms}')
     content = content.replace('ATOWEIGHT', f'{atomicweight}')
     content = content.replace('PATHPSEUDO', f'{pseudodir}')
@@ -49,9 +48,71 @@ ATOMIC_POSITIONS (angstrom)
 
     return content
 
-  def create_content_magnetic(self, prefix='nan', elementName='nan', natom=1, \
-    totalatoms=1, atomicweight=1, pseudodir='nan', \
-                       pseudopotential='nan'):
+  def create_content_4twospices(self, prefix='nan', elementNameA='nan', elementNameB='nan', \
+                            nspices=2, totalatoms=2, atomicweightA=1, atomicweightB=1, \
+                            pseudodir='nan', pseudopotentialA='nan', pseudopotentialB='nan'):
+    content = """&control
+calculation = 'relax',
+prefix='PREFIXNAME'
+outdir='/tmp', 
+pseudo_dir = 'PATHPSEUDO', 
+/
+&system    
+ibrav= 0, 
+nat= totATOM,
+ntyp= nSPICES,
+ecutwfc = 60.0,    
+occupations='smearing', 
+smearing='marzari-vanderbilt', 
+degauss=0.04
+/
+&ELECTRONS
+electron_maxstep = 100,
+conv_thr = 1.0d-3
+mixing_mode  = 'plain'
+mixing_beta  = 0.3D0
+diagonalization  = 'david'
+startingwfc  = 'atomic+random' 
+/
+&IONS
+trust_radius_max = 0.1D0
+ion_dynamics      = 'bfgs'
+ion_positions     = 'default'
+pot_extrapolation = 'atomic'
+wfc_extrapolation = 'none'
+/
+&CELL
+cell_dynamics = 'bfgs',
+cell_dofree = 'all',
+/
+CELL_PARAMETERS (angstrom)
+       20.0000000000       0.0000000000        0.0000000000
+        0.0000000000      20.0000000000        0.0000000000
+        0.0000000000       0.0000000000       20.0000000000 
+ATOMIC_SPECIES
+ELENAMEA  ATOWEIGHTA  PSEUDOPOTA 
+ELENAMEB  ATOWEIGHTB  PSEUDOPOTB
+
+K_POINTS {gamma}
+
+ATOMIC_POSITIONS (angstrom)
+    """
+    # Fitting the based datacard for the simulation
+    content = content.replace('PREFIXNAME', f'{prefix}')
+    content = content.replace('ELENAMEA', f'{elementNameA}')
+    content = content.replace('ELENAMEB', f'{elementNameB}')
+    content = content.replace('nSPICES', f'{nspices}')
+    content = content.replace('totATOM', f'{totalatoms}')
+    content = content.replace('ATOWEIGHTA', f'{atomicweightA}')
+    content = content.replace('ATOWEIGHTB', f'{atomicweightB}')
+    content = content.replace('PATHPSEUDO', f'{pseudodir}')
+    content = content.replace('PSEUDOPOTA', f'{pseudopotentialA}')
+    content = content.replace('PSEUDOPOTB', f'{pseudopotentialB}')
+
+    return content
+
+  def create_content_magnetic(self, prefix='nan', elementName='nan', totalatoms=1, \
+                              atomicweight=1, pseudodir='nan', pseudopotential='nan'):
     content = """&control
   calculation = 'scf',
   prefix='PREFIXNAME', !prefijo, debe cambiar segun el numero
@@ -96,7 +157,6 @@ ATOMIC_POSITIONS (angstrom)
 
     return content
 
-
   def generate_random_coordinates(self, scale_factor=1.0, num_atoms=4, min_distance=0.):
     def distance(coord1, coord2):
       """Calculate the Euclidean distance between two 3D coordinates."""
@@ -137,106 +197,128 @@ ATOMIC_POSITIONS (angstrom)
     # Return the coordinates formatted as strings
     return coordinates
 
-  def write_espresso_file(self, prefix='nan', num_indvs=1, num_atoms=4, \
-          r_scale=1.0, atomName='nan', atomic_weight=1.0, ismagnetic=0, \
-          pseudoDir='nan', pseudo_potential='nan'):
+  def write_espresso_file(self, params='nan', issingle=1):
+    return self.write_espresso_file_4single(params) if issingle else self.write_espresso_file_4twospices(params)
+
+  def write_espresso_file_4single(self, params='nan'):
     clusters = {}
-    for indv in range(1, num_indvs+1):
+
+    for indv in range(1, params.num_indvs+1):
       ind_key = f'ind{indv}'
       clusters[ind_key] = {}
-      if ismagnetic == 0:
-        content = self.create_content(prefix, elementName=atomName, \
-          natom=indv, totalatoms=num_atoms, atomicweight=atomic_weight, \
-          pseudodir=pseudoDir, pseudopotential=pseudo_potential)
+      if params.ifMagnetic == 0:
+        content = self.create_content(params.prefix, params.ele_name, params.num_atoms, \
+                                      params.atom_weight, params.pseudoDir, params.pseudo)
 
-      elif ismagnetic == 1:
-        content = self.create_content_magnetic(prefix, elementName=atomName, \
-          natom=indv, totalatoms=num_atoms, atomicweight=atomic_weight, \
-          pseudodir=pseudoDir, pseudopotential=pseudo_potential)
+      elif params.ifMagnetic == 1:
+        content = self.create_content_magnetic(params.prefix, params.ele_name, \
+                                               indv, params.num_atoms, params.atom_weight, \
+                                               params.pseudoDir, params.pseudo)
 
       # Append random coordinates for each atom
-      coordinates = self.generate_random_coordinates(r_scale, num_atoms, min_distance=2.0)
-      for atom_num in range(1, num_atoms+1):
+      coordinates = self.generate_random_coordinates(params.r_scale, params.num_atoms, 2.0)
+      for atom_num in range(1, params.num_atoms+1):
+
         tmp_coord = f"{coordinates[atom_num-1][0]:.10f} {coordinates[atom_num-1][1]:.10f} {coordinates[atom_num-1][2]:.10f}"
         string_components = tmp_coord.split()
         # Convert each component to a float
         clusters[ind_key][f'atom_coord{atom_num}'] = \
           [float(component) for component in string_components]
-        if ismagnetic == 0:
-          content += f"{atomName} {tmp_coord}\n"
-        elif ismagnetic == 1:
+
+        if params.ifMagnetic == 0:
+          content += f"{params.ele_name} {tmp_coord}\n"
+        elif params.ifMagnetic == 1:
           if atom_num % 2 == 0:
-            content += f"{atomName}2 {tmp_coord}\n"
+            content += f"{params.ele_name}2 {tmp_coord}\n"
           else:
-            content += f"{atomName}1 {tmp_coord}\n"
+            content += f"{params.ele_name}1 {tmp_coord}\n"
 
       # Write the content to the output file
       with open(f"{ind_key}.in", "w") as file:
         file.write(content)
     return clusters
 
-  def write_espresso_file_notRandom(self, prefix='nan', num_indvs=1, num_atoms=4, \
-          atomName='nan', atomic_weight=1.0, pseudoDir='nan', \
-          pseudo_potential='nan', zeropopufile='nan'):
+  def write_espresso_file_4twospices(self, params='nan'):
     clusters = {}
-    with open(zeropopufile) as file:
+    nspices = 2
+    totalatoms = params.num_atomsA + params.num_atomsB
+
+    for indv in range(1, params.num_indvs+1):
+      ind_key = f'ind{indv}'
+      clusters[ind_key] = {}
+      content = self.create_content_4twospices(params.prefix, params.ele_nameA, params.ele_nameB, nspices, \
+                                               totalatoms, params.atom_weightA, params.atom_weightB, \
+                                               params.pseudoDir, params.pseudoA, params.pseudoB)
+# Aquí pues miñjo
+      # Append random coordinates for each atom
+      coordinates = self.generate_random_coordinates(params.r_scale, totalatoms, min_distance=2.0)
+      for atom_num in range(1, params.num_atoms+1):
+        tmp_coord = f"{coordinates[atom_num-1][0]:.10f} {coordinates[atom_num-1][1]:.10f} {coordinates[atom_num-1][2]:.10f}"
+        string_components = tmp_coord.split()
+        # Convert each component to a float
+        clusters[ind_key][f'atom_coord{atom_num}'] = \
+          [float(component) for component in string_components]
+        if params.ifMagnetic == 0:
+          content += f"{params.ele_name} {tmp_coord}\n"
+        elif params.ifMagnetic == 1:
+          if atom_num % 2 == 0:
+            content += f"{params.ele_name}2 {tmp_coord}\n"
+          else:
+            content += f"{params.ele_name}1 {tmp_coord}\n"
+
+      # Write the content to the output file
+      with open(f"{ind_key}.in", "w") as file:
+        file.write(content)
+    return clusters
+
+  def write_espresso_file_notRandom(self, params='nan'):
+    clusters = {}
+    with open(params.getZeroPopu) as file:
       data = json.load(file)
     last_record_key = sorted(data.keys(), key=lambda x: int(x.replace('record', '')))[-1]
     last_record_value = data[last_record_key]
 
-    for indv in range(1, num_indvs+1):
+    for indv in range(1, params.num_indvs+1):
       ind_key = f'ind{indv}'
       clusters[ind_key] = {}
-      content = self.create_content(prefix, elementName=atomName, \
-              natom=indv, totalatoms=num_atoms, atomicweight=atomic_weight, \
-              pseudodir=pseudoDir, pseudopotential=pseudo_potential)
+      content = self.create_content(params.prefix, elementName=params.ele_name, \
+              natom=indv, totalatoms=params.num_atoms, atomicweight=params.atom_weight, \
+              pseudodir=params.pseudoDir, pseudopotential=params.pseudo)
 
-      for atom_num in range(1, num_atoms + 1):
+      for atom_num in range(1, params.num_atoms + 1):
         tmp_coord = last_record_value[0][ind_key][f'atom_coord{atom_num}']
         clusters[ind_key][f'atom_coord{atom_num}'] = [float(component) for component in tmp_coord]
-        content += f"{atomName} {' '.join(map(str, tmp_coord))}\n"
+        content += f"{params.ele_name} {' '.join(map(str, tmp_coord))}\n"
       # Write the content to the output file
       with open(f"{ind_key}.in", "w") as file:
         file.write(content)
 
     return clusters
 
-  def write_espresso_file_children(self, prefix='nan', child_clusters={}, \
-          num_indvs=1, num_atoms=4, atomName='nan', atomic_weight=1.0, \
-          pseudoDir='nan', pseudo_potential='nan'):
-    for indv in range(1, num_indvs+1):
-      ind_key = f'child{indv}'
-      content = self.create_content(prefix, elementName=atomName, \
-              natom=indv, totalatoms=num_atoms, \
-              atomicweight=atomic_weight, pseudodir=pseudoDir, \
-              pseudopotential=pseudo_potential)
-
+  def write_espresso_file_children(self, params='nan', child_clusters='nan', issingle=1):
+    for ind_key, individual in child_clusters.items():
+      content = self.create_content(params.prefix, params.ele_name, params.num_atoms, \
+                                    params.atom_weight, params.pseudoDir, params.pseudo)
       # Append random coordinates for each atom
-      for atom_num in range(1, num_atoms+1):
-        tmp_coord = child_clusters[ind_key][f'atom_coord{atom_num}']
+      for atom_num in range(1, params.num_atoms+1):
+        tmp_coord = individual[f'atom_coord{atom_num}']
         tmp_coord_str = " ".join(f"{coord:.10f}" for coord in tmp_coord)
-        content += f"{atomName} {tmp_coord_str}\n"
+        content += f"{params.ele_name} {tmp_coord_str}\n"
 
       # Write the content to the output file
       with open(f"{ind_key}.in", "w") as file:
         file.write(content)
 
-  def write_final_espresso_file(self, prefix='nan', last_cluster={} \
-          , num_indvs=1, num_atoms=4, atomName='nan', atomic_weight=1.0, \
-          pseudoDir='nan', pseudo_potential='nan'):
-
-    for indv in range(1, num_indvs+1):
-      ind_key = f'ind{indv}'
-      content = self.create_content(prefix, elementName=atomName, \
-              natom=indv, totalatoms=num_atoms, \
-              atomicweight=atomic_weight, pseudodir=pseudoDir, \
-              pseudopotential=pseudo_potential)
+  def write_final_espresso_file(self, params='nan', last_cluster={}):
+    for ind_key, individual in last_cluster.items():
+      content = self.create_content(params.prefix, params.ele_name, params.num_atoms, \
+                                    params.atom_weight, params.pseudoDir, params.pseudo)
 
       # Append random coordinates for each atom
-      for atom_num in range(1, num_atoms+1):
-        tmp_coord = last_cluster[ind_key][f'atom_coord{atom_num}']
+      for atom_num in range(1, params.num_atoms+1):
+        tmp_coord = individual[f'atom_coord{atom_num}']
         tmp_coord_str = " ".join(f"{coord:.10f}" for coord in tmp_coord)
-        content += f"{atomName} {tmp_coord_str}\n"
+        content += f"{params.ele_name} {tmp_coord_str}\n"
 
       # Write the content to the output file
       with open(f"final_{ind_key}.in", "w") as file:

@@ -1,3 +1,4 @@
+from subprocess import getoutput
 import numpy as np
 import subprocess
 import time
@@ -8,32 +9,25 @@ class runspresso:
   def __init__(self):
     self.a = 0
 
-  def create_script(self, job_id='nan', ischild='False', nNodes=1):
-    if ischild:
-      script = f"""#!/bin/bash
-      mpirun -np NNN pw.x -in child{job_id}.in > child_{job_id}.out
+  def create_script(self, job_id='nan', nNodes=1):
+    script = f"""#!/bin/bash
+mpirun -np NNN pw.x -in {job_id}.in > {job_id}.out
       """
-    else:
-      script = f"""#!/bin/bash
-      mpirun -np NNN pw.x -in ind{job_id}.in > {job_id}.out
-      """
-
     script = script.replace('NNN', f'{nNodes}')
     return script
     
   # Function to run a command in a detached screen session
-  def run_job_in_screen(self, job_id=1, ischild='False', nNodes=1):
-    script = self.create_script(job_id, ischild, nNodes)
-    if ischild:
-      script_file = f"run_child_{job_id}.sh"
-    else:
-      script_file = f"run_ind_{job_id}.sh"
+  def run_job_in_screen(self, job_id='nan', nNodes=1):
+    script = self.create_script(job_id, nNodes)
+    script_file = f"run_{job_id}.sh"
     with open(script_file, "w") as file:
       file.write(script)
-    
+
     subprocess.run(f"chmod +x {script_file}", shell=True)
-    subprocess.run(f"nice -20 nohup ./{script_file}", shell=True)
-    #subprocess.run(f"screen -dmS job_{job_id} ./{script_file}", shell=True)
+    subprocess.run(f"screen -dmS job_{job_id} nice -20 ./{script_file}", shell=True)
+    pid = getoutput(f"screen -ls | grep 'job_{job_id}' | awk '{{print $1}}' | cut -d. -f1")
+    print("Running on screen:", pid)
+    return(pid)
 
   def check_screen_sessions(self, job_id='nan'):
     result = subprocess.run("screen -ls", shell=True, capture_output=True, text=True)
@@ -72,16 +66,9 @@ class runspresso:
       print(f"Error While Reading File {file}: {e}")
     return total_energy
 
-  def get_total_energies(self, n_indv=1, ischild=False):
-    total_energies = []
-    for ind_id in range(1, n_indv+1):
-      if ischild:
-        ener = self.fetch_total_energy(f'child_{ind_id}.out')
-      else:
-        ener = self.fetch_total_energy(f'{ind_id}.out')
-      if ener is not None:
-        total_energies.append(ener)
-      else:
-        total_energies.append(-1)
-
-    return np.array(total_energies)
+  def get_total_energies(self, indv_key='nan'):
+    ener = self.fetch_total_energy(f'{indv_key}.out')
+    if ener is not None:
+      return ener
+    else:
+      return -1
