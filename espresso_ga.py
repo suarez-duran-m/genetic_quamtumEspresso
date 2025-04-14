@@ -55,6 +55,7 @@ for gen in range(params.n_generations):
   # Step 1. Creating the population
   #
   print("\nMSD: on Step 1. Creating the population")
+  tot_atoms = popu.getTotalAtoms4single(params) if args.singlespice else popu.getTotalAtoms4two(params)
 
   if gen == 0:
     if params.getZeroPopu is None:
@@ -92,7 +93,6 @@ for gen in range(params.n_generations):
   # Step 3. Calculating the Fitness
   #
   print("\nMSD: on Step 3. Calculating the Fitness")
-
   # =============================
   # Step 3.1. Fitness Calculation
   print("\nMSD: on Step 3.1. Fitness Calculation")
@@ -113,8 +113,8 @@ for gen in range(params.n_generations):
   print("\nMSD: on Step 3.3. Mixing/Mating")
   child_clusters = {}
   for j, (p1_key, p2_key) in enumerate(selected_pairs, start=1):
-    child = select.crossover(clusters[p1_key], clusters[p2_key], params.num_atoms)
-    child_clusters[f'child{j}'] = child
+    child_clusters[f'child{j}'] = select.crossover(clusters[p1_key], clusters[p2_key], \
+                                                   tot_atoms, args.singlespice)
 
 
   # ================
@@ -130,7 +130,6 @@ for gen in range(params.n_generations):
   # Step 5. Children evaluation
   #
   print("\nMSD: on Step 5. Children evaluation")
-
   # Running espresso
   popu.write_espresso_file_children(params, child_clusters, args.singlespice)
 
@@ -177,7 +176,7 @@ for gen in range(params.n_generations):
 print("\n\n") 
 print("Writing final candidates into .in espresso's file")
 
-popu.write_final_espresso_file(params, best_individuals)
+popu.write_final_espresso_file(params, best_individuals, args.singlespice)
 
 end_time = time.time()
 

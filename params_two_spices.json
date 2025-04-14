@@ -1,0 +1,22 @@
+{
+  "twoSpices": {
+    "prefix": "Cu-P-12-1-13",
+    "num_indvs": 5,
+    "n_generations": 2,
+    "num_atomsA": 18,
+    "ele_nameA": "Cu",
+    "atom_weightA": 64.546,
+    "pseudoA": "Cu.pbe-dn-rrkjus_psl.1.0.0.UPF",
+    "num_atomsB": 1,
+    "ele_nameB": "P",
+    "atom_weightB": 40.078,
+    "pseudoB": "P.pbe-nl-rrkjus_psl.1.0.0.UPF",
+    "num_children": 13,
+    "mutation_rate": 0.2,
+    "rho_scaling": 3,
+    "r_scale": 1.5,
+    "pseudoDir": "../pseudos/",
+    "nNodes": 4
+  }
+}
+

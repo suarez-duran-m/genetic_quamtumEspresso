@@ -108,7 +108,6 @@ ATOMIC_POSITIONS (angstrom)
     content = content.replace('PATHPSEUDO', f'{pseudodir}')
     content = content.replace('PSEUDOPOTA', f'{pseudopotentialA}')
     content = content.replace('PSEUDOPOTB', f'{pseudopotentialB}')
-
     return content
 
   def create_content_magnetic(self, prefix='nan', elementName='nan', totalatoms=1, \
@@ -168,26 +167,30 @@ ATOMIC_POSITIONS (angstrom)
 
     N_cubed_root = num_atoms ** (1 / 3)  # Calculate cube root of the number of atoms
     coordinates = []  # Store generated coordinates here
+    cube_side = N_cubed_root * scale_factor  # Maximum value for x, y, z
 
-    for _ in range(num_atoms):
+    for i in range(num_atoms):
+      # Generate random coordinates for the new atom
+      x = random.uniform(0, N_cubed_root) * scale_factor
+      y = random.uniform(0, N_cubed_root) * scale_factor
+      z = random.uniform(0, N_cubed_root) * scale_factor
+      new_atom = (x, y, z)
+
+      # If this is the first atom, checking for distances is not needed
+      if not coordinates:
+        coordinates.append(new_atom)
+
       while True:
-        # Generate random coordinates for the new atom
-        x = random.uniform(0, N_cubed_root) * scale_factor
-        y = random.uniform(0, N_cubed_root) * scale_factor
-        z = random.uniform(0, N_cubed_root) * scale_factor
-        new_atom = (x, y, z)
-
-        # If this is the first atom, no need to check distances
-        if not coordinates:
-          coordinates.append(new_atom)
-          break
+        too_close = False
 
         # Check the distance from the new atom to all previously placed atoms
-        too_close = False
         for atom in coordinates:
           if distance(new_atom, atom) < min_distance:
             too_close = True
-            break
+            new_atom = ((new_atom[0] + random.uniform(0, 0.2)) % cube_side,
+                    (new_atom[1] + random.uniform(0, 0.2)) % cube_side,
+                    (new_atom[2] + random.uniform(0, 0.2)) % cube_side )
+          break
 
         # If no atoms are too close, accept this atom's position
         if not too_close:
@@ -218,7 +221,6 @@ ATOMIC_POSITIONS (angstrom)
       # Append random coordinates for each atom
       coordinates = self.generate_random_coordinates(params.r_scale, params.num_atoms, 2.0)
       for atom_num in range(1, params.num_atoms+1):
-
         tmp_coord = f"{coordinates[atom_num-1][0]:.10f} {coordinates[atom_num-1][1]:.10f} {coordinates[atom_num-1][2]:.10f}"
         string_components = tmp_coord.split()
         # Convert each component to a float
@@ -249,23 +251,23 @@ ATOMIC_POSITIONS (angstrom)
       content = self.create_content_4twospices(params.prefix, params.ele_nameA, params.ele_nameB, nspices, \
                                                totalatoms, params.atom_weightA, params.atom_weightB, \
                                                params.pseudoDir, params.pseudoA, params.pseudoB)
-# Aquí pues miñjo
       # Append random coordinates for each atom
       coordinates = self.generate_random_coordinates(params.r_scale, totalatoms, min_distance=2.0)
-      for atom_num in range(1, params.num_atoms+1):
+      for atom_num in range(1, totalatoms+1):
+        # Format the coordinate string
         tmp_coord = f"{coordinates[atom_num-1][0]:.10f} {coordinates[atom_num-1][1]:.10f} {coordinates[atom_num-1][2]:.10f}"
-        string_components = tmp_coord.split()
-        # Convert each component to a float
-        clusters[ind_key][f'atom_coord{atom_num}'] = \
-          [float(component) for component in string_components]
-        if params.ifMagnetic == 0:
-          content += f"{params.ele_name} {tmp_coord}\n"
-        elif params.ifMagnetic == 1:
-          if atom_num % 2 == 0:
-            content += f"{params.ele_name}2 {tmp_coord}\n"
-          else:
-            content += f"{params.ele_name}1 {tmp_coord}\n"
-
+        # Decide on species based on the atom number
+        if atom_num <= params.num_atomsA:
+          species_value = params.ele_nameA
+          content += f"{params.ele_nameA} {tmp_coord}\n"
+        else:
+          species_value = params.ele_nameB
+          content += f"{params.ele_nameB} {tmp_coord}\n"
+        # Store each atom as a dictionary containing both coordinates and species
+        clusters[ind_key] [f'atom_{atom_num}'] = {
+          'coords': [float(component) for component in tmp_coord.split()],
+          'spice': species_value
+        }
       # Write the content to the output file
       with open(f"{ind_key}.in", "w") as file:
         file.write(content)
@@ -297,29 +299,59 @@ ATOMIC_POSITIONS (angstrom)
 
   def write_espresso_file_children(self, params='nan', child_clusters='nan', issingle=1):
     for ind_key, individual in child_clusters.items():
-      content = self.create_content(params.prefix, params.ele_name, params.num_atoms, \
+      if issingle:
+        content = self.create_content(params.prefix, params.ele_name, params.num_atoms, \
                                     params.atom_weight, params.pseudoDir, params.pseudo)
-      # Append random coordinates for each atom
-      for atom_num in range(1, params.num_atoms+1):
-        tmp_coord = individual[f'atom_coord{atom_num}']
-        tmp_coord_str = " ".join(f"{coord:.10f}" for coord in tmp_coord)
-        content += f"{params.ele_name} {tmp_coord_str}\n"
+        # Append random coordinates for each atom
+        for atom_num in range(1, params.num_atoms + 1):
+          tmp_coord = individual[f'atom_coord{atom_num}']
+          tmp_coord_str = " ".join(f"{coord:.10f}" for coord in tmp_coord)
+          content += f"{params.ele_name} {tmp_coord_str}\n"
+      else:
+        nspices = 2
+        totalatoms = params.num_atomsA + params.num_atomsB
+        content = self.create_content_4twospices(params.prefix, params.ele_nameA, params.ele_nameB, nspices, \
+                                                 totalatoms, params.atom_weightA, params.atom_weightB, \
+                                                 params.pseudoDir, params.pseudoA, params.pseudoB)
+        # Append random coordinates for each atom
+        for atom_num in range(1, totalatoms+1):
+          tmp_coord = individual[f'atom_{atom_num}']['coords']
+          tmp_coord_str = " ".join(f"{coord:.10f}" for coord in tmp_coord)
+          spice = individual[f'atom_{atom_num}']['spice']
+          content += f"{spice} {tmp_coord_str}\n"
 
       # Write the content to the output file
       with open(f"{ind_key}.in", "w") as file:
         file.write(content)
 
-  def write_final_espresso_file(self, params='nan', last_cluster={}):
+  def write_final_espresso_file(self, params='nan', last_cluster={}, issingle=1):
     for ind_key, individual in last_cluster.items():
-      content = self.create_content(params.prefix, params.ele_name, params.num_atoms, \
+      if issingle:
+        content = self.create_content(params.prefix, params.ele_name, params.num_atoms, \
                                     params.atom_weight, params.pseudoDir, params.pseudo)
-
-      # Append random coordinates for each atom
-      for atom_num in range(1, params.num_atoms+1):
-        tmp_coord = individual[f'atom_coord{atom_num}']
-        tmp_coord_str = " ".join(f"{coord:.10f}" for coord in tmp_coord)
-        content += f"{params.ele_name} {tmp_coord_str}\n"
+        # Append random coordinates for each atom
+        for atom_num in range(1, params.num_atoms+1):
+          tmp_coord = individual[f'atom_coord{atom_num}']
+          tmp_coord_str = " ".join(f"{coord:.10f}" for coord in tmp_coord)
+          content += f"{params.ele_name} {tmp_coord_str}\n"
+      else:
+        nspices = 2
+        totalatoms = params.num_atomsA + params.num_atomsB
+        content = self.create_content_4twospices(params.prefix, params.ele_nameA, params.ele_nameB, nspices, \
+                                                 totalatoms, params.atom_weightA, params.atom_weightB, \
+                                                 params.pseudoDir, params.pseudoA, params.pseudoB)
+        # Append random coordinates for each atom
+        for atom_num in range(1, totalatoms + 1):
+          tmp_coord = individual[f'atom_{atom_num}']['coords']
+          tmp_coord_str = " ".join(f"{coord:.10f}" for coord in tmp_coord)
+          spice = individual[f'atom_{atom_num}']['spice']
+          content += f"{spice} {tmp_coord_str}\n"
 
       # Write the content to the output file
       with open(f"final_{ind_key}.in", "w") as file:
         file.write(content)
+
+  def getTotalAtoms4single(self, params='nan'):
+    return params.num_atoms
+  def getTotalAtoms4two(self, params='nan'):
+    return params.num_atomsA + params.num_atomsB
